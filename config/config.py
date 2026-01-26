@@ -28,7 +28,7 @@ def load_key(keyname: str) -> str:
 
     # 写回 .env（追加方式）
     env_path = PROJECT_ROOT / ".env"
-    with open(env_path, "a", encoding="utf-8") as f
+    with open(env_path, "a", encoding="utf-8") as f:
         f.write(f"\n{keyname}={value}")
 
     # 同步到当前进程
