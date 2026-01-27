@@ -10,11 +10,17 @@ KEY_MAPPING: Dict[str, str] = {
     "OPENAI_API_KEY": const.Config_OpenAI_API_Key,
     "OPENAI_BASE_URL": const.Config_OpenAI_Base_URL,
     "HUGGINGFACEHUB_API_TOKEN": const.Config_HuggingFaceHub_API_Token,
+    "LANGSMITH_TRACING": const.Config_LANGSMITH_TRACING,
+    "LANGSMITH_API_KEY": const.Config_LANGSMITH_API_KEY,
 }
 
 
 def import_keys(overwrite: bool = False) -> None:
-    """"""
+    """
+
+    :param overwrite:
+    :return:
+    """
     for env_key, config_key in KEY_MAPPING.items():
         if not overwrite and os.getenv(env_key):
             continue

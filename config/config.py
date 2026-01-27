@@ -22,7 +22,7 @@ def load_key(keyname: str) -> str:
         return value
 
     # 兜底：交互式输入
-    value = getpass.getpass(const.Config_Load_Tip).strip()
+    value = getpass.getpass(const.Config_Load_Tip.format(keyname)).strip()
     if not value:
         raise ValueError(f"{keyname} cannot be empty")
 
