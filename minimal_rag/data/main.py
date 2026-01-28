@@ -6,23 +6,31 @@
 from typing import Optional
 
 import bs4
+from langchain.agents import create_agent
 from langchain_community.document_loaders import \
     WebBaseLoader  # https://docs.langchain.com/oss/python/integrations/document_loaders
 from langchain_core.documents import Document
-from langchain_core.vectorstores import InMemoryVectorStore
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_core.runnables import Runnable
+from langchain_core.vectorstores import \
+    InMemoryVectorStore, VectorStore  # https://docs.langchain.com/oss/python/integrations/vectorstores
+from langchain_openai import ChatOpenAI, \
+    OpenAIEmbeddings  # https://docs.langchain.com/oss/python/integrations/text_embedding#interface
 from langchain_text_splitters import RecursiveCharacterTextSplitter, \
     TextSplitter  # https://docs.langchain.com/oss/python/integrations/splitters
+from langchain_core.tools import tool
 
 from util.utils import import_keys
+
+tools = []
 
 
 class MiniRag:
     def __init__(self, chat_model=None, embedding=None):
         self.chat_model = chat_model
         self.embedding = embedding
-        self.vector_store = None
+        self.vector_store: Optional[VectorStore] = None
         self.text_splitter: Optional[TextSplitter] = None
+        self.agent: Optional[Runnable] = None
 
     def set_chat_model(self, model_name: str = "gpt-4.1"):
         self.chat_model = ChatOpenAI(model=model_name)
@@ -74,6 +82,35 @@ class MiniRag:
         print(document_ids[:3])
         return document_ids
 
+    def build_tools(self):
+        retrieve_tool = build_retrieve_tool(self)
+
+        prompt = (
+            "你可以使用一个工具，可以从博客文章中提取上下文。"
+            "使用该工具帮助回答用户问题。"
+        )
+
+        self.agent = create_agent(
+            self.chat_model,
+            tools=[retrieve_tool],
+            system_prompt=prompt,
+        )
+        return self.agent
+
+
+def build_retrieve_tool(rag: "MiniRag"):
+    @tool(response_format="content_and_artifact")
+    def retrieve_context(query: str):
+        """Retrieve information to help answer a query."""
+        retrieve_docs = rag.vector_store.similarity_search(query=query, k=2)
+        serialized = "\n\n".join(
+            f"源: {doc.metadata}\n内容: {doc.page_content}"
+            for doc in retrieve_docs
+        )
+        return serialized, retrieve_docs
+
+    return retrieve_context
+
 
 if __name__ == "__main__":
     import_keys()
@@ -95,3 +132,18 @@ if __name__ == "__main__":
 
     # 文档embedding、存储
     document_ids = rag.vector_store_doc(split_doc)
+
+    # 初始化工具
+    rag.build_tools()
+
+    # 测试回答
+    query = (
+        "任务分解的标准方法是什么?\n\n"
+        "一旦你得到答案，就去查查这种方法的常见扩展。"
+    )
+
+    for event in rag.agent.stream(
+            {"messages": [{"role": "user", "content": query}]},
+            stream_mode="values",
+    ):
+        event["messages"][-1].pretty_print()
