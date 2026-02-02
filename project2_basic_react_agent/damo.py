@@ -6,6 +6,8 @@
 from langchain_core.tools import tool
 from langchain import chat_models
 
+
+
 model = chat_models.init_chat_model(
     "claude-sonnet-4-5-20250929",
     temperature=0
