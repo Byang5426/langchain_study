@@ -16,29 +16,7 @@ from langchain_core.prompts import PromptTemplate, ChatPromptTemplate, SystemMes
     HumanMessagePromptTemplate
 from langchain_core.tools import tool
 
-from util.utils import import_keys
-
-import functools
-
-
-def skip_if_not_run(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        print("-" * 50)
-        # 兼容 need_run 作为 位置参数 或 关键字参数
-        need_run = kwargs.get("need_run")
-
-        # 如果没传 keyword，就尝试从位置参数中取
-        if need_run is None and len(args) >= 2:
-            need_run = args[1]
-
-        if not need_run:
-            print(f"不需要运行, {func.__name__}")
-            return None
-
-        return func(*args, **kwargs)
-
-    return wrapper
+from util.utils import import_keys, skip_if_not_run
 
 
 def init_model():
@@ -433,15 +411,14 @@ def start_project_create_agent(model: BaseChatModel, need_run=True):
 
     # 正确的 invoke 输入格式
     response = agent.invoke({
-        "messages": [("user", "今天北京天气怎么样？")]
+        "messages": HumanMessage(content="北京天气如何？")
     })
 
     # 多轮对话
     second_response = agent.invoke({
-        "messages": [
-            ("assistant", response['messages'][-1].content),
-            ("user", "上海呢")
-        ]
+        "messages": [AIMessage(content=response['messages'][-1].content),
+                     HumanMessage(content="上海呢？")
+                     ]
     })
 
     # 打印响应
@@ -468,14 +445,14 @@ def start_project_create_agent(model: BaseChatModel, need_run=True):
 
     # 流式输出
     for chunk in agent.stream(
-            {"messages": [("user", "今天北京天气怎么样？")]}):
+            {'messages': HumanMessage("你叫什么名字？")},
+            stream_mode="values"):
         # chunk 是状态更新
-        if 'messages' in chunk:
-            latest_msg = chunk['messages'][-1]
-            # 处理最新消息
-            print(latest_msg.content)
+        chunk["messages"][-1].pretty_print()
+        # 处理最新消息
+        # print(latest_msg.content)
 
-    return response
+    return ""
 
 
 if __name__ == '__main__':
